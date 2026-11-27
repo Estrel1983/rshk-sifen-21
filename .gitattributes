@@ -1,0 +1,2 @@
+# Keep sources byte-identical to the production -sources.jar (no CRLF conversion)
+* -text
