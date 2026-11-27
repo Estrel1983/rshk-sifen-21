@@ -27,6 +27,7 @@ JAR=$(ls target/rshk-jsifenlib-*.jar | head -n 1)
 
 rm -rf "$W"
 mkdir -p "$W/base-src" "$W/base-cls" "$W/gen" "$W/cls-base" "$W/cls-new"
+cd "$ROOT"
 
 BASE=$(git rev-list --max-parents=0 HEAD)
 echo "Building the baseline ($(git log -1 --format='%h %s' "$BASE")) with JDK 8..."
@@ -40,32 +41,34 @@ echo "Generating the test certificate..."
     || { cat "$W/javac-gen.log"; exit 1; }
 "$JDK8_HOME/bin/java" -cp "$W/gen" GenCert "$W/test.pfx"
 
-DUMP="$TOOL/src/com/roshka/sifen/internal/request/WireDump.java"
-MAIN=com.roshka.sifen.internal.request.WireDump
-"$JDK8_HOME/bin/javac" -encoding UTF-8 -cp "$W/base-cls" -d "$W/cls-base" "$DUMP"
-"$JDK8_HOME/bin/java" -cp "$W/cls-base$SEP$W/base-cls" $MAIN "$W/test.pfx" "$W/out-base" "$TOOL"/samples/*.xml > "$W/run-base.log" 2>&1 \
-    || { cat "$W/run-base.log"; exit 1; }
-grep "samples done" "$W/run-base.log"
+PKG="$TOOL/src/com/roshka/sifen/internal/request"
+WIRE=com.roshka.sifen.internal.request.WireDump
+RESP=com.roshka.sifen.internal.request.ResponseDump
 
-CP="$JAR$SEP$(cat target/runtime-classpath.txt)"
-"$JDK21_HOME/bin/javac" -encoding UTF-8 -cp "$CP" -d "$W/cls-new" "$DUMP"
-"$JDK21_HOME/bin/java" -cp "$W/cls-new$SEP$CP" $MAIN "$W/test.pfx" "$W/out-new" "$TOOL"/samples/*.xml > "$W/run-new.log" 2>&1 \
-    || { cat "$W/run-new.log"; exit 1; }
-grep "samples done" "$W/run-new.log"
+# run <label> <jdk home> <classpath>: requests into out-<label>/, parsed responses into out-<label>/responses/
+run() {
+    "$2/bin/javac" -encoding UTF-8 -cp "$3" -d "$W/cls-$1" "$PKG/WireDump.java" "$PKG/ResponseDump.java"
+    "$2/bin/java" -cp "$W/cls-$1$SEP$3" $WIRE "$W/test.pfx" "$W/out-$1" "$TOOL"/samples/*.xml > "$W/run-$1.log" 2>&1 \
+        && "$2/bin/java" -cp "$W/cls-$1$SEP$3" $RESP "$W/out-$1/responses" "$TOOL"/responses/*.xml >> "$W/run-$1.log" 2>&1 \
+        || { cat "$W/run-$1.log"; exit 1; }
+    grep "done" "$W/run-$1.log"
+}
+run base "$JDK8_HOME" "$W/base-cls"
+run new "$JDK21_HOME" "$JAR$SEP$(cat target/runtime-classpath.txt)"
 
 status=0
-for f in "$W"/out-base/*; do
-    name=$(basename "$f")
-    if cmp -s "$f" "$W/out-new/$name"; then
-        echo "SAME  $name ($(wc -c < "$f") bytes)"
+for f in $(cd "$W/out-base" && find . -type f | sort); do
+    name=${f#./}
+    if cmp -s "$W/out-base/$name" "$W/out-new/$name"; then
+        echo "SAME  $name ($(wc -c < "$W/out-base/$name") bytes)"
     else
         echo "DIFF  $name"
-        cmp "$f" "$W/out-new/$name" || true
+        cmp "$W/out-base/$name" "$W/out-new/$name" || true
         status=1
     fi
 done
-for f in "$W"/out-new/*; do
-    [ -e "$W/out-base/$(basename "$f")" ] || { echo "ONLY IN NEW  $(basename "$f")"; status=1; }
+for f in $(cd "$W/out-new" && find . -type f | sort); do
+    [ -e "$W/out-base/${f#./}" ] || { echo "ONLY IN NEW  ${f#./}"; status=1; }
 done
 
 if [ $status -eq 0 ]; then echo "OK: all outputs are byte-identical to the baseline."; else echo "FAILED: outputs differ from the baseline (see $W)."; fi

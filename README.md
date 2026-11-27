@@ -36,7 +36,15 @@ throwaway test certificate, and the files are compared byte by byte:
 
 - what `SoapHelper` writes to the connection, `getRequestSent()` and `generarXml()`;
 - the lot (the zipped XML, with the zip timestamp zeroed);
-- the result of signature validation.
+- the result of signature validation;
+- the parsing of SIFEN responses (`tools/sifen-xml-check/responses/`, synthetic, one or more for
+  every request type, including a SOAP fault and a non-SOAP error page). Each response goes
+  through `SoapHelper.parseSoapMessage` and the request's `processResponse`, as after a real call.
+  The resulting object is written out with all its fields, `getRespuestaBruta()` included.
 
-The script exits with 1 on any difference. Run it after every change to the code or to the
+The script exits with 1 on any difference.
+
+Known behavior kept as is (same in production): a response with whitespace between the SOAP
+`Body` and its first element (an indented response) fails with `NullPointerException` in
+`ResponseUtil.getMainNode`, which takes `getFirstChild()`. Run it after every change to the code or to the
 dependencies.
