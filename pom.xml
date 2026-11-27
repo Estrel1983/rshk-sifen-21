@@ -4,14 +4,16 @@
 
   <groupId>com.roshka.sifen</groupId>
   <artifactId>rshk-jsifenlib</artifactId>
-  <version>0.2.4b.4</version>
+  <version>0.2.5</version>
   <packaging>jar</packaging>
 
-  <name>rshk-jsifenlib-0.2.4b.4</name>
+  <name>rshk-jsifenlib</name>
   <url>http://maven.apache.org</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- Java 21 only: this jar does not run on Java 8 (see README.md) -->
+    <maven.compiler.release>21</maven.compiler.release>
   </properties>
 
   <dependencies>
