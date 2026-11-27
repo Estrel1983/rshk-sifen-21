@@ -10,10 +10,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-import sun.security.x509.GeneralName;
-import sun.security.x509.X500Name;
-import sun.security.x509.X509CertImpl;
 
+import javax.security.auth.x500.X500Principal;
 import javax.xml.crypto.*;
 import javax.xml.crypto.dsig.*;
 import javax.xml.crypto.dsig.dom.DOMSignContext;
@@ -35,6 +33,7 @@ import java.nio.file.Files;
 import java.security.*;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -45,6 +44,8 @@ import java.util.regex.Pattern;
  * Helper encargado de la firma digital de los documentos XML.
  */
 public class SignatureHelper {
+    /** Tipo GeneralName directoryName en getSubjectAlternativeNames() (RFC 5280). */
+    private static final int DIRECTORY_NAME = 4;
     private static final XMLSignatureFactory _xmlSignatureFactory = XMLSignatureFactory.getInstance();
     private static final List<Transform> transforms;
 
@@ -197,12 +198,12 @@ public class SignatureHelper {
         List<ValidezFirmaDigital.SujetoCertificado> certificateSubjects = new ArrayList<>();
 
         // Get certificate from Electronic Document
-        X509CertImpl certificate = (X509CertImpl) X509KeySelector.getCertificate(keyInfo);
+        X509Certificate certificate = X509KeySelector.getCertificate(keyInfo);
         if (certificate == null) return certificateSubjects;
 
         // Get main subject information from certificate
         try {
-            String subject = certificate.getSubjectDN().getName();
+            String subject = certificate.getSubjectX500Principal().toString();
 
             certificateSubjects.add(ValidezFirmaDigital.SujetoCertificado.create(
                     getAttributeFromSubject(subject, "SERIALNUMBER"),
@@ -213,11 +214,15 @@ public class SignatureHelper {
 
         // Get alternatives subjects from certificate
         try {
-            List<GeneralName> names = certificate.getSubjectAlternativeNameExtension().get("subject_name").names();
-            for (GeneralName name : names) {
-                if (!(name.getName() instanceof X500Name)) continue;
+            Collection<List<?>> names = certificate.getSubjectAlternativeNames();
+            if (names == null) return certificateSubjects;
+            for (List<?> name : names) {
+                if (!Integer.valueOf(DIRECTORY_NAME).equals(name.get(0))) continue;
 
-                String subject = name.getName().toString();
+                // El directoryName viene en formato RFC 2253, donde SERIALNUMBER aparece como
+                // "2.5.4.5=#..." (hex). X500Principal.toString() lo devuelve como "SERIALNUMBER=...",
+                // el mismo formato que daba sun.security.x509.X500Name.toString().
+                String subject = new X500Principal((String) name.get(1)).toString();
 
                 certificateSubjects.add(ValidezFirmaDigital.SujetoCertificado.create(
                         getAttributeFromSubject(subject, "SERIALNUMBER"),

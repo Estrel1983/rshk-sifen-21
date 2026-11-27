@@ -6,7 +6,6 @@ import com.roshka.sifen.internal.helpers.SignatureHelper;
 import com.roshka.sifen.internal.response.SifenObjectBase;
 import com.roshka.sifen.internal.response.SifenObjectFactory;
 import com.roshka.sifen.internal.util.ResponseUtil;
-import org.w3c.dom.Attr;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -30,8 +29,9 @@ public class TrGesEve extends SifenObjectBase {
 
         SOAPElement rEve = rGesEve.addChildElement("rEve");
         rEve.setAttribute("Id", this.Id);
-        Attr idAttribute = rEve.getAttributeNode("Id");
-        rEve.setIdAttributeNode(idAttribute, true);
+        // setIdAttribute y no setIdAttributeNode(getAttributeNode(..)): en saaj-impl 1.5 (Java 11+)
+        // getAttributeNode devuelve un envoltorio y setIdAttributeNode falla con NOT_FOUND_ERR
+        rEve.setIdAttribute("Id", true);
 
         rEve.addChildElement("dFecFirma").setTextContent(this.dFecFirma.format(formatter));
         rEve.addChildElement("dVerFor").setTextContent(SIFEN_CURRENT_VERSION);

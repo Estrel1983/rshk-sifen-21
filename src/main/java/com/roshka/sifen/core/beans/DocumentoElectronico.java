@@ -14,7 +14,6 @@ import com.roshka.sifen.internal.response.SifenObjectFactory;
 import com.roshka.sifen.internal.util.ResponseUtil;
 import com.roshka.sifen.internal.util.SifenExceptionUtil;
 import com.roshka.sifen.internal.util.SifenUtil;
-import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.InputSource;
@@ -281,8 +280,9 @@ public class DocumentoElectronico extends SifenObjectBase {
 
         SOAPElement DE = rDE.addChildElement("DE");
         DE.setAttribute("Id", this.getId());
-        Attr idAttribute = DE.getAttributeNode("Id");
-        DE.setIdAttributeNode(idAttribute, true);
+        // setIdAttribute y no setIdAttributeNode(getAttributeNode(..)): en saaj-impl 1.5 (Java 11+)
+        // getAttributeNode devuelve un envoltorio y setIdAttributeNode falla con NOT_FOUND_ERR
+        DE.setIdAttribute("Id", true);
 
         DE.addChildElement("dDVId").setTextContent(this.getdDVId());
         DE.addChildElement("dFecFirma").setTextContent(this.getdFecFirma().format(formatter));

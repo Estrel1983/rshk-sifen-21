@@ -17,6 +17,19 @@
   </properties>
 
   <dependencies>
+    <!-- SAAJ, removed from the JDK in Java 11. Both versions still use the javax.xml.soap
+         package names, so the code needs no change. -->
+    <dependency>
+      <groupId>jakarta.xml.soap</groupId>
+      <artifactId>jakarta.xml.soap-api</artifactId>
+      <version>1.4.2</version>
+    </dependency>
+    <dependency>
+      <groupId>com.sun.xml.messaging.saaj</groupId>
+      <artifactId>saaj-impl</artifactId>
+      <version>1.5.3</version>
+      <scope>runtime</scope>
+    </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
